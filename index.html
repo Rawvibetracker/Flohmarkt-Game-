@@ -1,406 +1,263 @@
-```html
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Flo & Nico: Flea Market Treasure Hunt</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@400;700;900&display=swap');
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Flo & Nico: Flohmarkt Schatzsuche</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+    body, html { width: 100%; height: 100%; overflow: hidden; background: #090d16; font-family: 'Segoe UI', system-ui, sans-serif; color: #fff; }
+    
+    #game-container { position: relative; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; background: #05070a; }
+    canvas { display: block; background: linear-gradient(to bottom, #1e1b4b, #311042); width: 100%; height: 100%; object-fit: contain; }
 
-        * {
-            user-select: none;
-            -webkit-user-select: none;
-            touch-action: manipulation;
-        }
+    /* UI Overlay (Start & Game Over) */
+    .overlay { position: absolute; inset: 0; background: rgba(9, 13, 22, 0.95); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; padding: 20px; text-align: center; backdrop-filter: blur(8px); }
+    .hidden { display: none !important; }
 
-        body {
-            font-family: 'Outfit', sans-serif;
-            background-color: #030712;
-            color: #f3f4f6;
-            overflow: hidden;
-        }
+    h1 { font-size: 2.2rem; margin-bottom: 8px; color: #38bdf8; text-shadow: 0 0 20px rgba(56,189,248,0.6); font-weight: 800; }
+    .subtitle { color: #94a3b8; font-size: 1rem; margin-bottom: 25px; max-width: 350px; line-height: 1.4; }
 
-        .font-pixel {
-            font-family: 'Press Start 2P', monospace;
-        }
+    .char-select { display: flex; gap: 15px; margin-bottom: 30px; }
+    .char-card { background: #1e293b; border: 3px solid #334155; border-radius: 16px; padding: 18px 15px; width: 140px; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
+    .char-card.selected { border-color: #38bdf8; background: #0f172a; transform: translateY(-4px); box-shadow: 0 12px 25px rgba(56,189,248,0.3); }
+    .char-card h3 { color: #f8fafc; font-size: 1.2rem; margin-bottom: 6px; }
+    .char-card p { font-size: 0.75rem; color: #38bdf8; margin: 0; }
 
-        /* Hologram / Scanline FX */
-        .scanlines {
-            background: linear-gradient(
-                rgba(18, 16, 16, 0) 50%, 
-                rgba(0, 0, 0, 0.3) 50%
-            ), linear-gradient(
-                90deg,
-                rgba(255, 0, 0, 0.03),
-                rgba(0, 255, 0, 0.01),
-                rgba(0, 0, 255, 0.03)
-            );
-            background-size: 100% 4px, 6px 100%;
-        }
+    .btn { background: linear-gradient(135deg, #0284c7, #2563eb); color: #fff; border: none; padding: 16px 40px; font-size: 1.3rem; font-weight: bold; border-radius: 14px; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.5); transition: transform 0.1s; }
+    .btn:active { transform: scale(0.96); }
 
-        .glow-blue {
-            box-shadow: 0 0 20px rgba(6, 182, 212, 0.5);
-        }
+    /* HUD (Punkte & Münzen im Spiel) */
+    #hud { position: absolute; top: 20px; left: 20px; right: 20px; display: flex; justify-content: space-between; z-index: 10; pointer-events: none; font-size: 1.2rem; font-weight: bold; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
+    .hud-box { background: rgba(15, 23, 42, 0.7); padding: 8px 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(4px); }
 
-        @keyframes pulse-glow {
-            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 10px #06b6d4); }
-            50% { transform: scale(1.05); filter: drop-shadow(0 0 25px #38bdf8); }
-        }
-
-        .animate-scan-pulse {
-            animation: pulse-glow 1.5s infinite ease-in-out;
-        }
-    </style>
+    /* Touch Controls für Mobile */
+    #touch-controls { position: absolute; inset: 0; pointer-events: none; z-index: 50; display: flex; justify-content: space-between; padding: 25px; align-items: flex-end; }
+    .touch-group { display: flex; gap: 15px; pointer-events: auto; }
+    .touch-btn { width: 72px; height: 72px; background: rgba(255,255,255,0.12); border: 2px solid rgba(255,255,255,0.25); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 1.6rem; color: #fff; backdrop-filter: blur(5px); box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+    .touch-btn:active { background: rgba(56,189,248,0.4); border-color: #38bdf8; transform: scale(0.92); }
+  </style>
 </head>
-<body class="h-screen w-screen flex flex-col items-center justify-center relative">
+<body>
 
-    <!-- TOP HUD BAR -->
-    <div id="game-hud" class="w-full max-w-5xl px-4 py-2 bg-slate-900/90 border-b-2 border-cyan-500/50 flex items-center justify-between z-20 shadow-2xl backdrop-blur-md text-xs sm:text-sm">
-        <!-- Player Info -->
-        <div class="flex items-center space-x-3">
-            <div id="hud-avatar" class="w-10 h-10 rounded-xl bg-cyan-600 flex items-center justify-center border-2 border-cyan-300 font-bold text-xl shadow-inner">
-                👦
-            </div>
-            <div>
-                <div class="font-bold text-cyan-300 text-sm sm:text-base flex items-center gap-2" id="hud-char-name">
-                    Flo
-                </div>
-                <div class="flex items-center space-x-1 text-amber-400 text-sm" id="hud-lives">
-                    <i class="fa-solid fa-heart"></i>
-                    <i class="fa-solid fa-heart"></i>
-                    <i class="fa-solid fa-heart"></i>
-                </div>
-            </div>
-        </div>
+<div id="game-container">
+  <canvas id="canvas"></canvas>
 
-        <!-- Stat Counters -->
-        <div class="flex items-center space-x-4 sm:space-x-8">
-            <!-- Score -->
-            <div class="flex items-center space-x-2">
-                <i class="fa-solid fa-trophy text-amber-400 text-lg"></i>
-                <div>
-                    <div class="text-[9px] text-slate-400 uppercase font-bold">Punkte</div>
-                    <div class="font-pixel text-amber-400 text-xs sm:text-sm" id="hud-score">000000</div>
-                </div>
-            </div>
+  <!-- HUD Ingame -->
+  <div id="hud" class="hidden">
+    <div class="hud-box" id="score-display">Schätze: 0</div>
+    <div class="hud-box" id="char-display">Flo</div>
+  </div>
 
-            <!-- CardSkope Counter -->
-            <div class="flex items-center space-x-2 bg-cyan-950/60 border border-cyan-500/40 px-3 py-1 rounded-lg">
-                <i class="fa-solid fa-cubes text-cyan-400 text-base"></i>
-                <div>
-                    <div class="text-[9px] text-cyan-300 uppercase font-bold">CardSkope</div>
-                    <div class="font-bold text-cyan-300 text-xs sm:text-sm" id="hud-cards">0 / 5</div>
-                </div>
-            </div>
-
-            <!-- Coins -->
-            <div class="flex items-center space-x-2">
-                <i class="fa-solid fa-coins text-yellow-400 text-lg"></i>
-                <div>
-                    <div class="text-[9px] text-slate-400 uppercase font-bold">Münzen</div>
-                    <div class="font-bold text-yellow-400 text-xs sm:text-sm" id="hud-coins">0</div>
-                </div>
-            </div>
-        </div>
+  <!-- Startbildschirm -->
+  <div id="start-overlay" class="overlay">
+    <h1>Flohmarkt Schatzsuche</h1>
+    <p class="subtitle">Wähle deinen Charakter und sammle seltene CardSkope Schätze ein!</p>
+    
+    <div class="char-select">
+      <div class="char-card selected" id="card-flo" onclick="selectChar('Flo')">
+        <h3>Flo</h3>
+        <p>⚡ Agil & Schnell</p>
+      </div>
+      <div class="char-card" id="card-nico" onclick="selectChar('Nico')">
+        <h3>Nico</h3>
+        <p>🦘 Höherer Sprung</p>
+      </div>
     </div>
 
-    <!-- CANVAS GAME DISPLAY -->
-    <div class="relative w-full max-w-5xl flex-1 bg-slate-950 overflow-hidden flex items-center justify-center border-x-2 border-cyan-900/40">
-        <canvas id="gameCanvas" class="w-full h-full block object-contain"></canvas>
+    <button class="btn" onclick="startGame()">SPIEL STARTEN</button>
+  </div>
+</div>
 
-        <!-- CARDSKOPE HOLOGRAM POPUP OVERLAY -->
-        <div id="card-scan-popup" class="hidden absolute top-10 left-1/2 -translate-x-1/2 z-30 bg-slate-900/90 border-2 border-cyan-400 rounded-2xl p-4 shadow-2xl flex items-center space-x-4 animate-scan-pulse backdrop-blur-md">
-            <div class="w-16 h-20 bg-cyan-950 border-2 border-cyan-400 rounded-lg flex flex-col items-center justify-center text-center p-1 scanlines">
-                <span id="popup-card-icon" class="text-3xl">🐉</span>
-                <span id="popup-card-rarity" class="text-[8px] font-pixel text-amber-400 mt-1 uppercase">RARE</span>
-            </div>
-            <div>
-                <div class="text-[10px] font-pixel text-cyan-400 flex items-center gap-1">
-                    <i class="fa-solid fa-bolt"></i> CardSkope AI SCAN!
-                </div>
-                <div id="popup-card-title" class="font-bold text-slate-100 text-base">Relaxo Hologramm</div>
-                <div id="popup-card-bonus" class="text-xs font-black text-emerald-400">+500 PTS BONUS!</div>
-            </div>
-        </div>
+<!-- Touch Steuerung -->
+<div id="touch-controls" class="hidden">
+  <div class="touch-group">
+    <div class="touch-btn" id="btn-left">◀</div>
+    <div class="touch-btn" id="btn-right">▶</div>
+  </div>
+  <div class="touch-group">
+    <div class="touch-btn" id="btn-jump" style="background: rgba(56,189,248,0.25); border-color: #38bdf8;">▲</div>
+  </div>
+</div>
 
-        <!-- TOUCH CONTROLS FOR MOBILE -->
-        <div id="mobile-controls" class="absolute bottom-4 left-4 right-4 flex justify-between items-end z-20 pointer-events-none md:hidden">
-            <!-- D-Pad Left/Right -->
-            <div class="flex space-x-3 pointer-events-auto">
-                <button id="btn-left" class="w-16 h-16 bg-slate-900/80 active:bg-cyan-600 border-2 border-slate-700 active:border-cyan-400 rounded-2xl text-slate-200 text-2xl flex items-center justify-center shadow-lg active:scale-95 transition">
-                    <i class="fa-solid fa-arrow-left"></i>
-                </button>
-                <button id="btn-right" class="w-16 h-16 bg-slate-900/80 active:bg-cyan-600 border-2 border-slate-700 active:border-cyan-400 rounded-2xl text-slate-200 text-2xl flex items-center justify-center shadow-lg active:scale-95 transition">
-                    <i class="fa-solid fa-arrow-right"></i>
-                </button>
-            </div>
+<script>
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  
+  let gameRunning = false;
+  let score = 0;
+  let selectedChar = 'Flo';
 
-            <!-- Action Buttons (Jump & Dash) -->
-            <div class="flex space-x-3 pointer-events-auto">
-                <button id="btn-dash" class="w-14 h-14 bg-amber-500/80 active:bg-amber-600 border-2 border-amber-300 rounded-2xl text-slate-950 text-xl font-bold flex items-center justify-center shadow-lg active:scale-95 transition">
-                    <i class="fa-solid fa-bolt"></i>
-                </button>
-                <button id="btn-jump" class="w-16 h-16 bg-cyan-500/90 active:bg-cyan-400 border-2 border-cyan-200 rounded-2xl text-slate-950 text-2xl font-black flex items-center justify-center shadow-lg active:scale-95 transition">
-                    <i class="fa-solid fa-arrow-up"></i>
-                </button>
-            </div>
-        </div>
-    </div>
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
 
-    <!-- START / CHARACTER SELECTION OVERLAY -->
-    <div id="modal-start" class="fixed inset-0 bg-slate-950/95 backdrop-blur-lg z-50 flex items-center justify-center p-4">
-        <div class="max-w-lg w-full bg-slate-900 border-2 border-cyan-500 rounded-3xl p-6 sm:p-8 text-center shadow-2xl space-y-6 relative overflow-hidden">
-            <div class="absolute -top-12 -right-12 w-40 h-40 bg-cyan-500/10 rounded-full blur-2xl"></div>
+  function selectChar(char) {
+    selectedChar = char;
+    document.getElementById('card-flo').classList.toggle('selected', char === 'Flo');
+    document.getElementById('card-nico').classList.toggle('selected', char === 'Nico');
+  }
 
-            <div class="space-y-2">
-                <div class="inline-block bg-cyan-500/20 text-cyan-400 font-pixel text-[10px] px-3 py-1 rounded-full uppercase border border-cyan-500/30">2D Platformer Adventure</div>
-                <h1 class="text-2xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-cyan-400 to-indigo-400">Flo & Nico</h1>
-                <p class="text-slate-400 text-xs sm:text-sm">Flohmarkt-Schatzsuche: Springe über Stände, weiche griesgrämigen Händlern aus & scanne seltene Sammelkarten!</p>
-            </div>
+  // Spiel-Objekte
+  const player = {
+    x: 100, y: 100, width: 42, height: 64,
+    vx: 0, vy: 0, speed: 6, jumpPower: -14, grounded: false
+  };
 
-            <!-- Character Selection -->
-            <div class="space-y-3">
-                <div class="text-xs font-bold uppercase text-slate-400 tracking-wider">Wähle deinen Helden:</div>
-                <div class="grid grid-cols-2 gap-4">
-                    <!-- Flo Option -->
-                    <button id="card-flo" onclick="selectChar('flo')" class="bg-slate-800/80 hover:bg-slate-800 border-2 border-cyan-500 rounded-2xl p-4 text-left transition transform hover:-translate-y-1 relative group">
-                        <div class="text-4xl mb-2">👦</div>
-                        <div class="font-bold text-slate-100 group-hover:text-cyan-400">Flo</div>
-                        <div class="text-[11px] text-cyan-300 font-semibold mt-1">Akrobat</div>
-                        <div class="text-[10px] text-slate-400 mt-0.5">Höherer Sprung & wendig in der Luft.</div>
-                        <div id="check-flo" class="absolute top-3 right-3 text-cyan-400 text-sm"><i class="fa-solid fa-circle-check"></i></div>
-                    </button>
+  const keys = { left: false, right: false, up: false };
 
-                    <!-- Nico Option -->
-                    <button id="card-nico" onclick="selectChar('nico')" class="bg-slate-800/80 hover:bg-slate-800 border-2 border-slate-700 rounded-2xl p-4 text-left transition transform hover:-translate-y-1 relative group">
-                        <div class="text-4xl mb-2">🧑</div>
-                        <div class="font-bold text-slate-100 group-hover:text-amber-400">Nico</div>
-                        <div class="text-[11px] text-amber-400 font-semibold mt-1">Speedster</div>
-                        <div class="text-[10px] text-slate-400 mt-0.5">Doppel-Sprung & schnellerer Dash.</div>
-                        <div id="check-nico" class="absolute top-3 right-3 text-slate-600 text-sm"><i class="fa-solid fa-circle"></i></div>
-                    </button>
-                </div>
-            </div>
+  // Tastatur Steuerung
+  window.addEventListener('keydown', e => {
+    if(e.key === 'ArrowLeft' || e.key === 'a') keys.left = true;
+    if(e.key === 'ArrowRight' || e.key === 'd') keys.right = true;
+    if(e.key === 'ArrowUp' || e.key === 'w' || e.key === ' ') keys.up = true;
+  });
+  window.addEventListener('keyup', e => {
+    if(e.key === 'ArrowLeft' || e.key === 'a') keys.left = false;
+    if(e.key === 'ArrowRight' || e.key === 'd') keys.right = false;
+    if(e.key === 'ArrowUp' || e.key === 'w' || e.key === ' ') keys.up = false;
+  });
 
-            <!-- Controls Info -->
-            <div class="bg-slate-950/60 rounded-xl p-3 border border-slate-800 text-xs text-slate-400 flex justify-around">
-                <span><b class="text-cyan-400">A / D / Pfeile:</b> Bewegen</span>
-                <span><b class="text-cyan-400">W / Space:</b> Sprung</span>
-                <span><b class="text-amber-400">Shift:</b> Dash</span>
-            </div>
+  // Touch Buttons binden
+  function bindTouch(id, keyName) {
+    const el = document.getElementById(id);
+    el.addEventListener('touchstart', e => { e.preventDefault(); keys[keyName] = true; });
+    el.addEventListener('touchend', e => { e.preventDefault(); keys[keyName] = false; });
+    el.addEventListener('mousedown', () => keys[keyName] = true);
+    el.addEventListener('mouseup', () => keys[keyName] = false);
+  }
+  bindTouch('btn-left', 'left');
+  bindTouch('btn-right', 'right');
+  bindTouch('btn-jump', 'up');
 
-            <button onclick="startGame()" class="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black text-lg py-4 rounded-2xl shadow-xl transition active:scale-95 uppercase tracking-wider flex items-center justify-center gap-2">
-                <i class="fa-solid fa-play"></i> Schatzsuche Starten!
-            </button>
-        </div>
-    </div>
+  // Flohmarkt Welt / Plattformen & Schätze
+  const platforms = [
+    { x: 0, y: window.innerHeight - 70, w: 4000, h: 70, type: 'ground' },
+    { x: 300, y: window.innerHeight - 180, w: 180, h: 22, type: 'stand' },
+    { x: 580, y: window.innerHeight - 280, w: 200, h: 22, type: 'stand' },
+    { x: 860, y: window.innerHeight - 200, w: 180, h: 22, type: 'stand' },
+    { x: 1140, y: window.innerHeight - 320, w: 220, h: 22, type: 'stand' }
+  ];
 
-    <!-- GAME OVER / VICTORY OVERLAY -->
-    <div id="modal-end" class="hidden fixed inset-0 bg-slate-950/95 backdrop-blur-lg z-50 flex items-center justify-center p-4">
-        <div class="max-w-md w-full bg-slate-900 border-2 border-cyan-500 rounded-3xl p-6 sm:p-8 text-center shadow-2xl space-y-6">
-            <div id="end-icon" class="text-6xl">🏆</div>
-            <div>
-                <h2 id="end-title" class="text-2xl sm:text-3xl font-black text-amber-400">Level Abgeschlossen!</h2>
-                <p id="end-sub" class="text-slate-400 text-sm mt-1">Du hast den Flohmarkt erfolgreich gemeistert!</p>
-            </div>
+  const treasures = [
+    { x: 360, y: window.innerHeight - 230, collected: false },
+    { x: 650, y: window.innerHeight - 330, collected: false },
+    { x: 930, y: window.innerHeight - 250, collected: false },
+    { x: 1220, y: window.innerHeight - 370, collected: false }
+  ];
 
-            <div class="bg-slate-800/80 rounded-2xl p-4 border border-slate-700 space-y-2 text-sm">
-                <div class="flex justify-between">
-                    <span class="text-slate-400">Gesamtpunkte:</span>
-                    <span id="end-score" class="font-pixel text-amber-400">000000</span>
-                </div>
-                <div class="flex justify-between">
-                    <span class="text-slate-400">Gesammelte Karten:</span>
-                    <span id="end-cards" class="font-bold text-cyan-400">0 / 5</span>
-                </div>
-                <div class="flex justify-between">
-                    <span class="text-slate-400">Münzen:</span>
-                    <span id="end-coins" class="font-bold text-yellow-400">0</span>
-                </div>
-            </div>
+  let cameraX = 0;
 
-            <button onclick="resetGame()" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black text-lg py-4 rounded-2xl shadow-xl transition active:scale-95 uppercase">
-                <i class="fa-solid fa-rotate-right"></i> Nochmal Spielen
-            </button>
-        </div>
-    </div>
+  function startGame() {
+    document.getElementById('start-overlay').classList.add('hidden');
+    document.getElementById('touch-controls').classList.remove('hidden');
+    document.getElementById('hud').classList.remove('hidden');
+    document.getElementById('char-display').innerText = 'Spieler: ' + selectedChar;
 
-    <!-- JAVASCRIPT GAME LOGIC -->
-    <script>
-        // --- SOUND SYNTHESIZER (Web Audio API) ---
-        class SoundFX {
-            constructor() {
-                this.ctx = null;
-            }
+    if(selectedChar === 'Flo') {
+      player.speed = 7;
+      player.jumpPower = -14;
+    } else {
+      player.speed = 5.5;
+      player.jumpPower = -16.5; // Nico springt höher
+    }
 
-            init() {
-                if (!this.ctx) {
-                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-                }
-            }
+    gameRunning = true;
+    requestAnimationFrame(loop);
+  }
 
-            playTone(freq, type = 'sine', duration = 0.1, vol = 0.1) {
-                if (!this.ctx) return;
-                try {
-                    const osc = this.ctx.createOscillator();
-                    const gain = this.ctx.createGain();
-                    osc.type = type;
-                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
-                    gain.gain.setValueAtTime(vol, this.ctx.currentTime);
-                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
-                    osc.connect(gain);
-                    gain.connect(this.ctx.destination);
-                    osc.start();
-                    osc.stop(this.ctx.currentTime + duration);
-                } catch(e) {}
-            }
+  function loop() {
+    if (!gameRunning) return;
 
-            jump() {
-                if (!this.ctx) return;
-                this.playTone(300, 'square', 0.15, 0.08);
-                setTimeout(() => this.playTone(450, 'square', 0.15, 0.08), 50);
-            }
+    // Bewegung
+    if (keys.left) player.vx = -player.speed;
+    else if (keys.right) player.vx = player.speed;
+    else player.vx *= 0.75;
 
-            coin() {
-                if (!this.ctx) return;
-                this.playTone(987, 'sine', 0.08, 0.1);
-                setTimeout(() => this.playTone(1318, 'sine', 0.2, 0.1), 80);
-            }
+    if (keys.up && player.grounded) {
+      player.vy = player.jumpPower;
+      player.grounded = false;
+    }
 
-            cardScan() {
-                if (!this.ctx) return;
-                this.playTone(523, 'triangle', 0.1, 0.12);
-                setTimeout(() => this.playTone(659, 'triangle', 0.1, 0.12), 80);
-                setTimeout(() => this.playTone(783, 'triangle', 0.1, 0.12), 160);
-                setTimeout(() => this.playTone(1046, 'triangle', 0.25, 0.15), 240);
-            }
+    player.vy += 0.65; // Schwerkraft
+    player.x += player.vx;
+    player.y += player.vy;
 
-            stomp() {
-                if (!this.ctx) return;
-                this.playTone(150, 'sawtooth', 0.15, 0.15);
-            }
+    // Welt-Begrenzung links
+    if (player.x < 0) player.x = 0;
 
-            hurt() {
-                if (!this.ctx) return;
-                this.playTone(120, 'square', 0.25, 0.2);
-            }
+    // Kollision Plattformen
+    player.grounded = false;
+    platforms.forEach(p => {
+      if (player.x + player.width > p.x && player.x < p.x + p.w &&
+          player.y + player.height > p.y && player.y + player.height - player.vy <= p.y) {
+        player.grounded = true;
+        player.vy = 0;
+        player.y = p.y - player.height;
+      }
+    });
 
-            win() {
-                if (!this.ctx) return;
-                const notes = [440, 554, 659, 880];
-                notes.forEach((n, i) => {
-                    setTimeout(() => this.playTone(n, 'triangle', 0.2, 0.15), i * 120);
-                });
-            }
-        }
+    // Kamera mitscrollen
+    cameraX = player.x - canvas.width / 3;
+    if (cameraX < 0) cameraX = 0;
 
-        const audio = new SoundFX();
+    // Schätze einsammeln
+    treasures.forEach(t => {
+      if (!t.collected &&
+          player.x < t.x + 35 && player.x + player.width > t.x - 10 &&
+          player.y < t.y + 35 && player.y + player.height > t.y - 10) {
+        t.collected = true;
+        score += 100;
+        document.getElementById('score-display').innerText = 'Schätze: ' + score;
+      }
+    });
 
-        // --- GAME CONFIG & ENGINE STATE ---
-        const CANVAS_WIDTH = 960;
-        const CANVAS_HEIGHT = 540;
-        const GRAVITY = 0.55;
+    // --- ZEICHNEN ---
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        const GAME = {
-            active: false,
-            character: 'flo', // 'flo' or 'nico'
-            score: 0,
-            coins: 0,
-            cardsCollected: 0,
-            totalCardsInLevel: 5,
-            lives: 3,
-            cameraX: 0,
-            levelWidth: 3800,
-            keys: {},
-            particles: []
-        };
+    ctx.save();
+    ctx.translate(-cameraX, 0);
 
-        // --- PLAYER OBJECT ---
-        const player = {
-            x: 100,
-            y: 300,
-            w: 36,
-            h: 48,
-            vx: 0,
-            vy: 0,
-            speed: 5.5,
-            jumpPower: -13.5,
-            grounded: false,
-            doubleJumpAvailable: false,
-            facing: 'right',
-            dashCooldown: 0,
-            invulnerable: 0,
+    // Hintergrund-Deko (Flohmarkt Stände Andeutung)
+    ctx.fillStyle = 'rgba(255,255,255,0.03)';
+    ctx.fillRect(100, canvas.height - 250, 200, 180);
+    ctx.fillRect(500, canvas.height - 350, 220, 270);
+    ctx.fillRect(900, canvas.height - 280, 240, 200);
 
-            reset() {
-                this.x = 100;
-                this.y = 300;
-                this.vx = 0;
-                this.vy = 0;
-                this.grounded = false;
-                this.facing = 'right';
-                this.dashCooldown = 0;
-                this.invulnerable = 0;
-            }
-        };
+    // Plattformen zeichnen
+    platforms.forEach(p => {
+      ctx.fillStyle = p.type === 'ground' ? '#1e293b' : '#334155';
+      ctx.fillRect(p.x, p.y, p.w, p.h);
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(p.x, p.y, p.w, 4); // Neon-Kante
+    });
 
-        // --- LEVEL DESIGN: PLATFORMS, ITEMS, ENEMIES ---
-        let platforms = [];
-        let collectibles = [];
-        let enemies = [];
+    // Schätze (CardSkope Karten) zeichnen
+    treasures.forEach(t => {
+      if (!t.collected) {
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(t.x, t.y, 25, 35);
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(t.x + 4, t.y + 4, 17, 27);
+      }
+    });
 
-        function generateLevel() {
-            platforms = [
-                // Ground segments
-                { x: 0, y: 480, w: 1200, h: 60, type: 'ground' },
-                { x: 1300, y: 480, w: 1000, h: 60, type: 'ground' },
-                { x: 2400, y: 480, w: 1400, h: 60, type: 'ground' },
+    // Spieler zeichnen
+    ctx.fillStyle = selectedChar === 'Flo' ? '#38bdf8' : '#fbbf24';
+    ctx.fillRect(player.x, player.y, player.width, player.height);
 
-                // Elevated Stalls & Wooden Platforms
-                { x: 250, y: 360, w: 140, h: 20, type: 'stall', title: 'Omi\'s Stand' },
-                { x: 450, y: 270, w: 120, h: 20, type: 'wood' },
-                { x: 650, y: 380, w: 150, h: 20, type: 'stall', title: 'Retro Games' },
-                { x: 900, y: 290, w: 160, h: 20, type: 'wood' },
+    // Gesicht / Augen
+    ctx.fillStyle = '#0f172a';
+    let eyeOffsetX = player.vx >= 0 ? 24 : 6;
+    ctx.fillRect(player.x + eyeOffsetX, player.y + 12, 8, 8);
 
-                // Chasm Gap Jump Area
-                { x: 1220, y: 380, w: 70, h: 18, type: 'crate' },
-                { x: 1400, y: 350, w: 130, h: 20, type: 'stall', title: 'Comics & Mehr' },
-                { x: 1600, y: 250, w: 150, h: 20, type: 'wood' },
-                { x: 1820, y: 330, w: 140, h: 20, type: 'stall' },
-                { x: 2050, y: 230, w: 160, h: 20, type: 'wood' },
+    ctx.restore();
 
-                // Final Section
-                { x: 2500, y: 360, w: 180, h: 20, type: 'stall', title: 'CardSkope HQ' },
-                { x: 2750, y: 260, w: 150, h: 20, type: 'wood' },
-                { x: 3000, y: 350, w: 180, h: 20, type: 'stall' },
-                { x: 3300, y: 250, w: 200, h: 20, type: 'finish' } // Finish Banner Platform
-            ];
-
-            // Collectibles: Coins & Rare Cards
-            collectibles = [
-                // Coins
-                { x: 280, y: 320, type: 'coin', collected: false },
-                { x: 310, y: 320, type: 'coin', collected: false },
-                { x: 480, y: 230, type: 'coin', collected: false },
-                { x: 510, y: 230, type: 'coin', collected: false },
-                { x: 930, y: 250, type: 'coin', collected: false },
-                { x: 1430, y: 310, type: 'coin', collected: false },
-                { x: 1650, y: 210, type: 'coin', collected: false },
-                { x: 2080, y: 190, type: 'coin', collected: false },
-                { x: 2550, y: 320, type: 'coin', collected: false },
-                { x: 2800, y: 220, type: 'coin', collected: false },
-
-                // Rare Vintage Cards (CardSkope Scan Items)
-                { x: 690, y: 330, type: 'card', name: 'Relaxo Hologramm', rarity: 'Rare', icon: '💤', collected: false },
-                { x: 1000, y: 240, type: 'card', name: 'Glurak 1st Edition', rarity: 'Ultra Rare', icon: '🐉', collected: false },
-                { x: 1680, y: 200, type: 'card', name: 'Blauäugiger Drache', rarity: 'Ultra Rare', icon: '⚡', collected: false },
-                { x: 2100, y: 180, type: 'card', name: 'Mewtu Foil', rarity: 'Secret Rare', icon: '🔮', collected: false },
-                { x: 3050, y: 300, type: 'card', name: 'Gold-Trainer CardSkope', rarity: 'Legendary', icon: '💎', collected: false }
-            ];
-
-            // Enemies (Shopping Carts & Grumpy Sellers)
-            enemies = [
-                { x: 500, y: 440, minX: 400, maxX: 700, vx: 1.8, type: 'cart', w: 40, h: 32, alive: true },
-                { x: 950, y: 440, min
+    requestAnimationFrame(loop);
+  }
+</script>
+</body>
+</html>

@@ -1,296 +1,767 @@
+```html
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Flo & Nico: Flohmarkt Schatzsuche</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
-    body, html { width: 100%; height: 100%; overflow: hidden; background: #1e1b4b; font-family: 'Segoe UI', system-ui, sans-serif; color: #fff; }
-    
-    #game-container { position: relative; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; background: #0f172a; }
-    canvas { display: block; width: 100%; height: 100%; object-fit: contain; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CardSkope Flohmarkt Jump</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
-    /* UI Overlay */
-    .overlay { position: absolute; inset: 0; background: rgba(15, 23, 42, 0.96); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; padding: 20px; text-align: center; }
-    .hidden { display: none !important; }
+        body {
+            font-family: 'Press+Start+2P', monospace, sans-serif;
+            background-color: #0b0f19;
+            color: #ffffff;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+        }
 
-    h1 { font-size: 2.2rem; margin-bottom: 8px; color: #f59e0b; text-shadow: 0 0 15px rgba(245,158,11,0.5); font-weight: 800; }
-    .subtitle { color: #cbd5e1; font-size: 1rem; margin-bottom: 25px; max-width: 380px; line-height: 1.4; }
+        .font-retro {
+            font-family: 'Press Start 2P', monospace;
+        }
 
-    .char-select { display: flex; gap: 15px; margin-bottom: 30px; }
-    .char-card { background: #1e293b; border: 3px solid #475569; border-radius: 16px; padding: 18px 15px; width: 140px; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 8px 20px rgba(0,0,0,0.4); }
-    .char-card.selected { border-color: #f59e0b; background: #0f172a; transform: translateY(-4px); box-shadow: 0 12px 25px rgba(245,158,11,0.3); }
-    .char-card h3 { color: #f8fafc; font-size: 1.2rem; margin-bottom: 6px; }
-    .char-card p { font-size: 0.75rem; color: #f59e0b; margin: 0; }
+        .neon-border {
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.4), inset 0 0 10px rgba(0, 240, 255, 0.2);
+            border: 2px solid #00f0ff;
+        }
 
-    .btn { background: linear-gradient(135deg, #d97706, #b45309); color: #fff; border: none; padding: 16px 40px; font-size: 1.3rem; font-weight: bold; border-radius: 14px; cursor: pointer; box-shadow: 0 6px 20px rgba(217,119,6,0.5); }
-    .btn:active { transform: scale(0.96); }
+        .neon-text {
+            text-shadow: 0 0 8px #00f0ff, 0 0 15px #0055ff;
+        }
 
-    /* HUD */
-    #hud { position: absolute; top: 20px; left: 20px; right: 20px; display: flex; justify-content: space-between; z-index: 10; pointer-events: none; font-size: 1.2rem; font-weight: bold; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
-    .hud-box { background: rgba(15, 23, 42, 0.85); padding: 8px 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.15); backdrop-filter: blur(4px); }
+        .glass-panel {
+            background: rgba(16, 21, 37, 0.85);
+            backdrop-filter: blur(8px);
+        }
 
-    /* Touch Controls */
-    #touch-controls { position: absolute; inset: 0; pointer-events: none; z-index: 50; display: flex; justify-content: space-between; padding: 25px; align-items: flex-end; }
-    .touch-group { display: flex; gap: 15px; pointer-events: auto; }
-    .touch-btn { width: 72px; height: 72px; background: rgba(255,255,255,0.15); border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 1.6rem; color: #fff; backdrop-filter: blur(5px); box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
-    .touch-btn:active { background: rgba(245,158,11,0.5); border-color: #f59e0b; transform: scale(0.92); }
-  </style>
+        canvas {
+            image-rendering: pixelated;
+        }
+    </style>
 </head>
-<body>
+<body class="flex flex-col items-center justify-center min-h-screen p-2 md:p-4 overflow-hidden bg-slate-950">
 
-<div id="game-container">
-  <canvas id="canvas"></canvas>
+    <!-- Haupt-Game-Container -->
+    <div class="relative w-full max-w-4xl flex flex-col items-center">
 
-  <!-- HUD Ingame -->
-  <div id="hud" class="hidden">
-    <div class="hud-box" id="score-display">Schätze: 0 / 5</div>
-    <div class="hud-box" id="char-display">Flo</div>
-  </div>
+        <!-- Top Header & CardSkope Branding -->
+        <div class="w-full glass-panel neon-border rounded-xl p-3 mb-2 flex flex-wrap justify-between items-center gap-2 z-10">
+            <!-- Logo Section -->
+            <div class="flex items-center gap-3">
+                <div class="relative w-10 h-10 md:w-12 md:h-12 flex items-center justify-center bg-slate-900 rounded-lg border border-cyan-400 shadow-lg overflow-hidden">
+                    <!-- Synthesized SVG CardSkope Logo -->
+                    <svg viewBox="0 0 100 100" class="w-8 h-8 md:w-10 md:h-10">
+                        <circle cx="50" cy="45" r="30" fill="none" stroke="#00f0ff" stroke-width="6" />
+                        <circle cx="50" cy="45" r="20" fill="none" stroke="#0088ff" stroke-width="4" />
+                        <line x1="50" y1="10" x2="50" y2="20" stroke="#00f0ff" stroke-width="5" />
+                        <line x1="50" y1="70" x2="50" y2="80" stroke="#00f0ff" stroke-width="5" />
+                        <line x1="15" y1="45" x2="25" y2="45" stroke="#00f0ff" stroke-width="5" />
+                        <line x1="75" y1="45" x2="85" y2="45" stroke="#00f0ff" stroke-width="5" />
+                        <circle cx="50" cy="45" r="8" fill="#00f0ff" />
+                        <path d="M30 80 L70 80 L60 90 L40 90 Z" fill="#0088ff" />
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-xs md:text-sm text-cyan-400 font-bold tracking-wider neon-text">CardSkope</h1>
+                    <p class="text-[8px] md:text-[10px] text-slate-300">FLOHMARKT JUMP</p>
+                </div>
+            </div>
 
-  <!-- Startbildschirm -->
-  <div id="start-overlay" class="overlay">
-    <h1>Flohmarkt Schatzsuche</h1>
-    <p class="subtitle">Erkunde den Flohmarkt mit Flo & Nico, stöbere an Ständen und finde seltene CardSkope Schätze!</p>
-    
-    <div class="char-select">
-      <div class="char-card selected" id="card-flo" onclick="selectChar('Flo')">
-        <h3>Flo</h3>
-        <p>⚡ Schnell & Agil</p>
-      </div>
-      <div class="char-card" id="card-nico" onclick="selectChar('Nico')">
-        <h3>Nico</h3>
-        <p>🦘 Höherer Sprung</p>
-      </div>
+            <!-- Stats Bar -->
+            <div class="flex items-center gap-3 md:gap-6 text-[10px] md:text-xs">
+                <div>
+                    <span class="text-slate-400 block text-[8px]">LEVEL</span>
+                    <span id="level-display" class="text-yellow-400 font-bold text-sm md:text-base">1 / 99</span>
+                </div>
+                <div>
+                    <span class="text-slate-400 block text-[8px]">HITS</span>
+                    <span id="hits-display" class="text-cyan-300 font-bold text-sm md:text-base">0 / 10</span>
+                </div>
+                <div>
+                    <span class="text-slate-400 block text-[8px]">SCORE</span>
+                    <span id="score-display" class="text-green-400 font-bold text-sm md:text-base">0</span>
+                </div>
+            </div>
+
+            <!-- Character Switcher Button -->
+            <button id="switch-char-btn" class="px-3 py-2 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white rounded-lg text-[9px] md:text-[10px] font-bold border border-cyan-300 transition-all active:scale-95 shadow-md">
+                FIGUR: <span id="char-name" class="text-yellow-300">FLORIAN</span>
+            </button>
+        </div>
+
+        <!-- Health & Progress Bar -->
+        <div class="w-full grid grid-cols-2 gap-2 mb-2 z-10 text-[9px] md:text-[10px]">
+            <!-- HP Bar -->
+            <div class="glass-panel p-2 rounded-lg border border-slate-700 flex items-center gap-2">
+                <span class="text-red-400 font-bold">HP:</span>
+                <div class="w-full bg-slate-800 h-3 rounded-full overflow-hidden border border-slate-600">
+                    <div id="hp-bar" class="bg-gradient-to-r from-red-600 to-emerald-400 h-full transition-all duration-200" style="width: 100%;"></div>
+                </div>
+            </div>
+            <!-- Level Progress Bar -->
+            <div class="glass-panel p-2 rounded-lg border border-slate-700 flex items-center gap-2">
+                <span class="text-cyan-400 font-bold">ZIEL:</span>
+                <div class="w-full bg-slate-800 h-3 rounded-full overflow-hidden border border-slate-600">
+                    <div id="progress-bar" class="bg-cyan-400 h-full transition-all duration-200" style="width: 0%;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Canvas Container -->
+        <div class="relative w-full aspect-[16/9] glass-panel neon-border rounded-xl overflow-hidden shadow-2xl">
+            <canvas id="gameCanvas" class="w-full h-full block"></canvas>
+
+            <!-- Start / Pause / Game Over Overlay -->
+            <div id="overlay" class="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center p-4 text-center z-20">
+                <h2 id="overlay-title" class="text-lg md:text-2xl text-cyan-400 font-bold mb-4 neon-text">CARDSKOPE FLOHMARKT JUMP</h2>
+                <p id="overlay-msg" class="text-[10px] md:text-xs text-slate-300 mb-6 max-w-md leading-relaxed">
+                    Sammle alle glänzenden CardSkope Hits auf dem Flohmarkt! Weiche genervten Händlern, wilden Hunden und Schnäppchenjägern aus.
+                </p>
+                <div class="flex flex-col gap-3 w-48">
+                    <button id="start-btn" class="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-lg text-xs md:text-sm border-2 border-white transition-all active:scale-95 shadow-lg shadow-cyan-500/30">
+                        SPIEL STARTEN
+                    </button>
+                </div>
+                <!-- Controls Help -->
+                <div class="mt-6 text-[8px] md:text-[9px] text-slate-400 flex gap-4">
+                    <span> Pfeiltasten / WASD: Bewegen</span>
+                    <span> Leertaste: Doppel-Sprung</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Touch Controls -->
+        <div class="w-full grid grid-cols-4 gap-2 mt-3 md:hidden">
+            <button id="btn-left" class="py-4 glass-panel border border-cyan-500/50 rounded-xl text-cyan-300 font-bold text-lg active:bg-cyan-500/30">◄</button>
+            <button id="btn-right" class="py-4 glass-panel border border-cyan-500/50 rounded-xl text-cyan-300 font-bold text-lg active:bg-cyan-500/30">►</button>
+            <button id="btn-jump" class="col-span-2 py-4 glass-panel border border-green-500/50 rounded-xl text-green-300 font-bold text-sm active:bg-green-500/30">SPRINGEN ▲</button>
+        </div>
+
     </div>
 
-    <button class="btn" onclick="startGame()">SCHATZSUCHE STARTEN</button>
-  </div>
-</div>
+    <!-- JavaScript Engine -->
+    <script>
+        // --- Web Audio Synthesizer (Keine externen MP3s nötig) ---
+        class AudioEngine {
+            constructor() {
+                this.ctx = null;
+            }
 
-<!-- Touch Steuerung -->
-<div id="touch-controls" class="hidden">
-  <div class="touch-group">
-    <div class="touch-btn" id="btn-left">◀</div>
-    <div class="touch-btn" id="btn-right">▶</div>
-  </div>
-  <div class="touch-group">
-    <div class="touch-btn" id="btn-jump" style="background: rgba(245,158,11,0.25); border-color: #f59e0b;">▲</div>
-  </div>
-</div>
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
 
-<script>
-  const canvas = document.getElementById('canvas');
-  const ctx = canvas.getContext('2d');
-  
-  let gameRunning = false;
-  let score = 0;
-  let selectedChar = 'Flo';
+            playJump() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(600, this.ctx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.15);
+            }
 
-  function resize() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-  }
-  window.addEventListener('resize', resize);
-  resize();
+            playHitPickup() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(523.25, this.ctx.currentTime); // C5
+                osc.frequency.setValueAtTime(659.25, this.ctx.currentTime + 0.08); // E5
+                osc.frequency.setValueAtTime(783.99, this.ctx.currentTime + 0.16); // G5
+                osc.frequency.setValueAtTime(1046.50, this.ctx.currentTime + 0.24); // C6
+                gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.35);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.35);
+            }
 
-  function selectChar(char) {
-    selectedChar = char;
-    document.getElementById('card-flo').classList.toggle('selected', char === 'Flo');
-    document.getElementById('card-nico').classList.toggle('selected', char === 'Nico');
-  }
+            playHurt() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(200, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(60, this.ctx.currentTime + 0.2);
+                gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.2);
+            }
 
-  const player = {
-    x: 100, y: 100, width: 42, height: 64,
-    vx: 0, vy: 0, speed: 6, jumpPower: -14, grounded: false
-  };
-
-  const keys = { left: false, right: false, up: false };
-
-  window.addEventListener('keydown', e => {
-    if(e.key === 'ArrowLeft' || e.key === 'a') keys.left = true;
-    if(e.key === 'ArrowRight' || e.key === 'd') keys.right = true;
-    if(e.key === 'ArrowUp' || e.key === 'w' || e.key === ' ') keys.up = true;
-  });
-  window.addEventListener('keyup', e => {
-    if(e.key === 'ArrowLeft' || e.key === 'a') keys.left = false;
-    if(e.key === 'ArrowRight' || e.key === 'd') keys.right = false;
-    if(e.key === 'ArrowUp' || e.key === 'w' || e.key === ' ') keys.up = false;
-  });
-
-  function bindTouch(id, keyName) {
-    const el = document.getElementById(id);
-    el.addEventListener('touchstart', e => { e.preventDefault(); keys[keyName] = true; });
-    el.addEventListener('touchend', e => { e.preventDefault(); keys[keyName] = false; });
-    el.addEventListener('mousedown', () => keys[keyName] = true);
-    el.addEventListener('mouseup', () => keys[keyName] = false);
-  }
-  bindTouch('btn-left', 'left');
-  bindTouch('btn-right', 'right');
-  bindTouch('btn-jump', 'up');
-
-  // Flohmarkt Stände (Plattformen)
-  const platforms = [
-    { x: 0, y: window.innerHeight - 90, w: 3200, h: 90, type: 'ground' }, // Asphalt / Boden
-    { x: 350, y: window.innerHeight - 200, w: 220, h: 25, type: 'table' }, // Flohmarktstand 1
-    { x: 680, y: window.innerHeight - 300, w: 200, h: 25, type: 'table' }, // Stand 2
-    { x: 980, y: window.innerHeight - 210, w: 240, h: 25, type: 'table' }, // Stand 3
-    { x: 1300, y: window.innerHeight - 330, w: 220, h: 25, type: 'table' }, // Stand 4
-    { x: 1650, y: window.innerHeight - 240, w: 260, h: 25, type: 'table' }  // Finaler Stand
-  ];
-
-  // Seltene Flohmarkt Schätze & CardSkope Items
-  const treasures = [
-    { x: 440, y: window.innerHeight - 250, type: 'CardSkope Karte', collected: false },
-    { x: 760, y: window.innerHeight - 350, type: 'Retro Konsole', collected: false },
-    { x: 1080, y: window.innerHeight - 260, type: 'Vintage Comic', collected: false },
-    { x: 1400, y: window.innerHeight - 380, type: 'Seltene Gold-Karte', collected: false },
-    { x: 1760, y: window.innerHeight - 290, type: 'Mega Schatztruhe', collected: false }
-  ];
-
-  let cameraX = 0;
-
-  function startGame() {
-    document.getElementById('start-overlay').classList.add('hidden');
-    document.getElementById('touch-controls').classList.remove('hidden');
-    document.getElementById('hud').classList.remove('hidden');
-    document.getElementById('char-display').innerText = 'Spieler: ' + selectedChar;
-
-    if(selectedChar === 'Flo') {
-      player.speed = 6.5;
-      player.jumpPower = -14;
-    } else {
-      player.speed = 5.5;
-      player.jumpPower = -16.5; // Nico springt etwas höher
-    }
-
-    gameRunning = true;
-    requestAnimationFrame(loop);
-  }
-
-  function loop() {
-    if (!gameRunning) return;
-
-    if (keys.left) player.vx = -player.speed;
-    else if (keys.right) player.vx = player.speed;
-    else player.vx *= 0.75;
-
-    if (keys.up && player.grounded) {
-      player.vy = player.jumpPower;
-      player.grounded = false;
-    }
-
-    player.vy += 0.65;
-    player.x += player.vx;
-    player.y += player.vy;
-
-    if (player.x < 0) player.x = 0;
-
-    player.grounded = false;
-    platforms.forEach(p => {
-      if (player.x + player.width > p.x && player.x < p.x + p.w &&
-          player.y + player.height > p.y && player.y + player.height - player.vy <= p.y) {
-        player.grounded = true;
-        player.vy = 0;
-        player.y = p.y - player.height;
-      }
-    });
-
-    cameraX = player.x - canvas.width / 3;
-    if (cameraX < 0) cameraX = 0;
-
-    treasures.forEach(t => {
-      if (!t.collected &&
-          player.x < t.x + 35 && player.x + player.width > t.x - 10 &&
-          player.y < t.y + 40 && player.y + player.height > t.y - 10) {
-        t.collected = true;
-        score++;
-        document.getElementById('score-display').innerText = `Schätze: ${score} / ${treasures.length}`;
-        if (score === treasures.length) {
-          setTimeout(() => alert("🎉 Herzlichen Glückwunsch! Ihr habt alle Schätze auf dem Flohmarkt gefunden!"), 200);
+            playLevelUp() {
+                if (!this.ctx) return;
+                const notes = [440, 554.37, 659.25, 880];
+                notes.forEach((freq, i) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'square';
+                    osc.frequency.value = freq;
+                    gain.gain.setValueAtTime(0.15, this.ctx.currentTime + i * 0.08);
+                    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + i * 0.08 + 0.12);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(this.ctx.currentTime + i * 0.08);
+                    osc.stop(this.ctx.currentTime + i * 0.08 + 0.12);
+                });
+            }
         }
-      }
-    });
 
-    // --- ZEICHNEN DES FLOHMARKTES ---
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const audio = new AudioEngine();
 
-    // Markt-Himmel / Hintergrund (Abendstimmung auf dem Flohmarkt)
-    let bgGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    bgGrad.addColorStop(0, '#1e1b4b');
-    bgGrad.addColorStop(1, '#312e81');
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // --- Game Logic Engine ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
 
-    ctx.save();
-    ctx.translate(-cameraX, 0);
+        // Dimensions
+        const CANVAS_WIDTH = 800;
+        const CANVAS_HEIGHT = 450;
+        canvas.width = CANVAS_WIDTH;
+        canvas.height = CANVAS_HEIGHT;
 
-    // Hintergrund-Dekoration (Flohmarktzelte & Lichterketten)
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
-    for(let i = 200; i < 3000; i += 450) {
-      ctx.fillRect(i, canvas.height - 380, 280, 290);
-      // Zelt-Dach
-      ctx.beginPath();
-      ctx.moveTo(i - 20, canvas.height - 380);
-      ctx.lineTo(i + 140, canvas.height - 460);
-      ctx.lineTo(i + 300, canvas.height - 380);
-      ctx.fill();
-    }
+        // Game State Variables
+        let gameState = 'START'; // 'START', 'PLAYING', 'GAMEOVER', 'VICTORY'
+        let currentLevel = 1;
+        let score = 0;
+        let hitsCollectedLevel = 0;
+        const HITS_PER_LEVEL = 10;
+        let playerChar = 'FLORIAN'; // 'FLORIAN' or 'NICO'
+        let invulnerableTimer = 0;
 
-    // Boden / Asphalt
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(0, window.innerHeight - 90, 3200, 90);
-    ctx.fillStyle = '#334155';
-    ctx.fillRect(0, window.innerHeight - 90, 3200, 6); // Bordsteinkante
+        // Player Attributes
+        const player = {
+            x: 100,
+            y: 300,
+            width: 28,
+            height: 42,
+            vx: 0,
+            vy: 0,
+            speed: 5.5,
+            jumpPower: -10.5,
+            grounded: false,
+            jumpCount: 0,
+            maxJumps: 2,
+            hp: 100,
+            maxHp: 100,
+            facing: 'right'
+        };
 
-    // Stand-Tische & Markttische zeichnen
-    platforms.forEach(p => {
-      if (p.type === 'table') {
-        // Tischbeine
-        ctx.fillStyle = '#78350f';
-        ctx.fillRect(p.x + 20, p.y + p.h, 12, 90);
-        ctx.fillRect(p.x + p.w - 32, p.y + p.h, 12, 90);
-        // Tischplatte (Holzoptik)
-        ctx.fillStyle = '#b45309';
-        ctx.fillRect(p.x, p.y, p.w, p.h);
-        ctx.fillStyle = '#f59e0b';
-        ctx.fillRect(p.x, p.y, p.w, 5); // Tischkante
-      }
-    });
+        // Inputs
+        const keys = {
+            left: false,
+            right: false,
+            up: false
+        };
 
-    // Schätze (CardSkope Karten, Kisten, Raritäten) zeichnen
-    treasures.forEach(t => {
-      if (!t.collected) {
-        // Leuchten-Effekt
-        ctx.fillStyle = 'rgba(245, 158, 11, 0.3)';
-        ctx.beginPath();
-        ctx.arc(t.x + 15, t.y + 15, 25, 0, Math.PI * 2);
-        ctx.fill();
+        // Platforms Engine (3 Tiers)
+        const platforms = [
+            // Floor
+            { x: 0, y: 400, width: 800, height: 50, type: 'ground' },
+            // Middle Row
+            { x: 50, y: 290, width: 220, height: 16, type: 'stand', title: 'Comics & Karten' },
+            { x: 320, y: 290, width: 200, height: 16, type: 'stand', title: 'Antikes Spielzeug' },
+            { x: 570, y: 290, width: 180, height: 16, type: 'stand', title: 'Trödel & Co' },
+            // Top Row
+            { x: 120, y: 170, width: 200, height: 16, type: 'stand', title: 'Raritäten' },
+            { x: 450, y: 170, width: 230, height: 16, type: 'stand', title: 'Sonderangebote' }
+        ];
 
-        // Schatz-Box / Karte
-        ctx.fillStyle = '#f59e0b';
-        ctx.fillRect(t.x, t.y, 30, 35);
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(t.x + 4, t.y + 4, 22, 27);
-        ctx.fillStyle = '#b45309';
-        ctx.fillRect(t.x + 10, t.y + 12, 10, 10);
-      }
-    });
+        let collectibles = [];
+        let enemies = [];
+        let particles = [];
 
-    // Spieler zeichnen (Flohmarkt-Outfit Farben)
-    ctx.fillStyle = selectedChar === 'Flo' ? '#38bdf8' : '#f59e0b';
-    ctx.fillRect(player.x, player.y, player.width, player.height);
+        // --- Spawning Logic ---
+        function spawnCollectibles() {
+            collectibles = [];
+            for (let i = 0; i < 5; i++) {
+                spawnSingleHit();
+            }
+        }
 
-    // Augen / Blickrichtung
-    ctx.fillStyle = '#0f172a';
-    let eyeOffsetX = player.vx >= 0 ? 26 : 6;
-    ctx.fillRect(player.x + eyeOffsetX, player.y + 12, 8, 8);
+        function spawnSingleHit() {
+            const platform = platforms[Math.floor(Math.random() * (platforms.length - 1)) + 1];
+            const hit = {
+                x: platform.x + Math.random() * (platform.width - 20),
+                y: platform.y - 30,
+                width: 18,
+                height: 24,
+                floatOffset: Math.random() * Math.PI * 2,
+                sparkle: 0
+            };
+            collectibles.push(hit);
+        }
 
-    ctx.restore();
+        function spawnEnemies() {
+            enemies = [];
+            // Calculate enemy count based on level
+            const enemyCount = Math.min(2 + Math.floor(currentLevel / 5), 8);
+            const speedMultiplier = 1 + (currentLevel * 0.025);
 
-    requestAnimationFrame(loop);
-  }
-</script>
+            const types = ['HAENDLER', 'HUND', 'JAEGER'];
+
+            for (let i = 0; i < enemyCount; i++) {
+                const type = types[Math.floor(Math.random() * types.length)];
+                const platform = platforms[Math.floor(Math.random() * platforms.length)];
+                
+                enemies.push({
+                    type: type,
+                    x: platform.x + Math.random() * (platform.width - 30),
+                    y: platform.y - (type === 'HUND' ? 20 : 36),
+                    width: type === 'HUND' ? 28 : 24,
+                    height: type === 'HUND' ? 20 : 36,
+                    vx: (Math.random() > 0.5 ? 1.5 : -1.5) * speedMultiplier,
+                    minX: platform.x,
+                    maxX: platform.x + platform.width,
+                    platformY: platform.y
+                });
+            }
+        }
+
+        // --- Particle System ---
+        function createParticles(x, y, color, count = 8) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 6,
+                    vy: (Math.random() - 0.5) * 6,
+                    size: Math.random() * 4 + 2,
+                    color: color,
+                    life: 1.0
+                });
+            }
+        }
+
+        // --- Character Renderer ---
+        function drawPlayer(ctx, p) {
+            ctx.save();
+            ctx.translate(p.x + p.width / 2, p.y + p.height / 2);
+            if (p.facing === 'left') ctx.scale(-1, 1);
+
+            const w = p.width;
+            const h = p.height;
+
+            // Flash red on hurt
+            if (invulnerableTimer > 0 && Math.floor(Date.now() / 80) % 2 === 0) {
+                ctx.fillStyle = '#ff3333';
+            } else if (playerChar === 'FLORIAN') {
+                // FLORIAN: Glasses, Beard, Green Shirt, Dark Pants
+                // Head
+                ctx.fillStyle = '#f3c193';
+                ctx.fillRect(-8, -h/2 + 2, 16, 14);
+                // Hair & Beard
+                ctx.fillStyle = '#4a2e18';
+                ctx.fillRect(-9, -h/2, 18, 5); // Hair top
+                ctx.fillRect(-8, -h/2 + 10, 16, 6); // Beard
+                // Glasses
+                ctx.fillStyle = '#00f0ff';
+                ctx.fillRect(1, -h/2 + 5, 6, 4);
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, -h/2 + 4, 8, 1);
+
+                // Body (Green Shirt)
+                ctx.fillStyle = '#10b981';
+                ctx.fillRect(-9, -h/2 + 16, 18, 14);
+
+                // Legs/Pants
+                ctx.fillStyle = '#1e293b';
+                ctx.fillRect(-8, -h/2 + 30, 7, 12);
+                ctx.fillRect(1, -h/2 + 30, 7, 12);
+            } else {
+                // NICO: Red Cap, Red/Grey Hoodie, Blue Jeans
+                // Head
+                ctx.fillStyle = '#f3c193';
+                ctx.fillRect(-8, -h/2 + 4, 16, 12);
+                // Red Cap
+                ctx.fillStyle = '#ef4444';
+                ctx.fillRect(-9, -h/2, 18, 6); // Cap top
+                ctx.fillRect(0, -h/2 + 4, 11, 3); // Cap visor
+
+                // Hoodie (Red/Grey)
+                ctx.fillStyle = '#ef4444';
+                ctx.fillRect(-9, -h/2 + 16, 18, 14);
+                ctx.fillStyle = '#94a3b8';
+                ctx.fillRect(-3, -h/2 + 16, 6, 14);
+
+                // Pants (Jeans)
+                ctx.fillStyle = '#2563eb';
+                ctx.fillRect(-8, -h/2 + 30, 7, 12);
+                ctx.fillRect(1, -h/2 + 30, 7, 12);
+            }
+
+            ctx.restore();
+        }
+
+        // --- Render Background & Stalls ---
+        function drawBackground() {
+            // Dark Retro Gradient
+            const bgGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
+            bgGrad.addColorStop(0, '#0a0e1a');
+            bgGrad.addColorStop(1, '#151c33');
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+            // Retro Banners / Lights
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(0, 40);
+            ctx.bezierCurveTo(200, 60, 600, 60, 800, 40);
+            ctx.stroke();
+
+            // Hanging Party Bulbs
+            for (let i = 50; i < 800; i += 60) {
+                const bulbY = 45 + Math.sin(i) * 5;
+                ctx.fillStyle = i % 120 === 0 ? '#00f0ff' : '#f59e0b';
+                ctx.beginPath();
+                ctx.arc(i, bulbY, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Draw Platforms & Market Stands
+            platforms.forEach((p) => {
+                if (p.type === 'ground') {
+                    // Floor
+                    ctx.fillStyle = '#1e293b';
+                    ctx.fillRect(p.x, p.y, p.width, p.height);
+                    ctx.fillStyle = '#00f0ff';
+                    ctx.fillRect(p.x, p.y, p.width, 3); // Neon top line
+                } else {
+                    // Stand Table
+                    ctx.fillStyle = '#854d0e'; // Wood Table
+                    ctx.fillRect(p.x, p.y, p.width, p.height);
+                    ctx.fillStyle = '#a16207';
+                    ctx.fillRect(p.x, p.y, p.width, 3);
+
+                    // Stand Legs
+                    ctx.fillStyle = '#713f12';
+                    ctx.fillRect(p.x + 10, p.y + p.height, 6, 450 - p.y);
+                    ctx.fillRect(p.x + p.width - 16, p.y + p.height, 6, 450 - p.y);
+
+                    // Stall Title Signs
+                    if (p.title) {
+                        ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
+                        ctx.fillRect(p.x + 10, p.y - 22, p.width - 20, 18);
+                        ctx.strokeStyle = '#00f0ff';
+                        ctx.strokeRect(p.x + 10, p.y - 22, p.width - 20, 18);
+
+                        ctx.fillStyle = '#38bdf8';
+                        ctx.font = '7px "Press Start 2P"';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(p.title, p.x + p.width / 2, p.y - 10);
+                    }
+                }
+            });
+        }
+
+        // --- Render Collectibles & Enemies ---
+        function drawEntities() {
+            // Draw Collectibles (CardSkope Hits)
+            collectibles.forEach(hit => {
+                hit.floatOffset += 0.05;
+                const floatY = hit.y + Math.sin(hit.floatOffset) * 4;
+
+                ctx.save();
+                ctx.shadowColor = '#00f0ff';
+                ctx.shadowBlur = 10;
+
+                // Card Outline
+                ctx.fillStyle = '#0284c7';
+                ctx.fillRect(hit.x, floatY, hit.width, hit.height);
+                ctx.strokeStyle = '#38bdf8';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(hit.x, floatY, hit.width, hit.height);
+
+                // Holo Graphic
+                ctx.fillStyle = '#7dd3fc';
+                ctx.fillRect(hit.x + 3, floatY + 3, hit.width - 6, 10);
+
+                // CardSkope 'S' Logo on Card
+                ctx.fillStyle = '#0f172a';
+                ctx.font = '8px "Press Start 2P"';
+                ctx.textAlign = 'center';
+                ctx.fillText('S', hit.x + hit.width / 2, floatY + 11);
+
+                ctx.restore();
+            });
+
+            // Draw Enemies
+            enemies.forEach(e => {
+                ctx.save();
+                if (e.type === 'HAENDLER') {
+                    // Grumpy Seller
+                    ctx.fillStyle = '#dc2626';
+                    ctx.fillRect(e.x, e.y, e.width, e.height);
+                    ctx.fillStyle = '#fca5a5';
+                    ctx.fillRect(e.x + 4, e.y + 4, e.width - 8, 10); // Face
+                    // Text
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '6px "Press Start 2P"';
+                    ctx.fillText('Händler', e.x - 2, e.y - 4);
+                } else if (e.type === 'HUND') {
+                    // Wild Dog
+                    ctx.fillStyle = '#b45309';
+                    ctx.fillRect(e.x, e.y, e.width, e.height);
+                    ctx.fillStyle = '#78350f';
+                    ctx.fillRect(e.x + (e.vx > 0 ? e.width - 6 : 0), e.y - 4, 8, 8); // Head
+                } else if (e.type === 'JAEGER') {
+                    // Bargain Hunter
+                    ctx.fillStyle = '#9333ea';
+                    ctx.fillRect(e.x, e.y, e.width, e.height);
+                    ctx.fillStyle = '#fef08a';
+                    ctx.fillRect(e.x + 3, e.y + 3, e.width - 6, 8);
+                }
+                ctx.restore();
+            });
+
+            // Draw Particles
+            particles.forEach((p, index) => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= 0.04;
+
+                if (p.life <= 0) {
+                    particles.splice(index, 1);
+                } else {
+                    ctx.fillStyle = p.color;
+                    ctx.globalAlpha = p.life;
+                    ctx.fillRect(p.x, p.y, p.size, p.size);
+                    ctx.globalAlpha = 1.0;
+                }
+            });
+        }
+
+        // --- Update Physics & Logic ---
+        function update() {
+            if (gameState !== 'PLAYING') return;
+
+            // Player Invulnerability Timer
+            if (invulnerableTimer > 0) invulnerableTimer--;
+
+            // Horizontal Movement
+            if (keys.left) {
+                player.vx = -player.speed;
+                player.facing = 'left';
+            } else if (keys.right) {
+                player.vx = player.speed;
+                player.facing = 'right';
+            } else {
+                player.vx *= 0.7; // Friction
+            }
+
+            // Gravity
+            player.vy += 0.55;
+
+            // Apply Velocities
+            player.x += player.vx;
+            player.y += player.vy;
+
+            // Boundaries
+            if (player.x < 0) player.x = 0;
+            if (player.x + player.width > CANVAS_WIDTH) player.x = CANVAS_WIDTH - player.width;
+
+            // Collision with Platforms
+            player.grounded = false;
+            platforms.forEach(p => {
+                if (player.x + player.width > p.x &&
+                    player.x < p.x + p.width &&
+                    player.y + player.height >= p.y &&
+                    player.y + player.height <= p.y + p.height + player.vy) {
+                    
+                    if (player.vy >= 0) {
+                        player.grounded = true;
+                        player.vy = 0;
+                        player.y = p.y - player.height;
+                        player.jumpCount = 0;
+                    }
+                }
+            });
+
+            // Enemy Logic & Collision
+            enemies.forEach(e => {
+                e.x += e.vx;
+                // Bounce back at platform edges
+                if (e.x <= e.minX || e.x + e.width >= e.maxX) {
+                    e.vx *= -1;
+                }
+
+                // Player Hit Test
+                if (invulnerableTimer === 0 &&
+                    player.x < e.x + e.width &&
+                    player.x + player.width > e.x &&
+                    player.y < e.y + e.height &&
+                    player.y + player.height > e.y) {
+
+                    // Take Damage
+                    player.hp -= 20;
+                    invulnerableTimer = 40; // ~0.6 sec invulnerability
+                    audio.playHurt();
+                    createParticles(player.x + player.width/2, player.y + player.height/2, '#ef4444', 12);
+
+                    if (player.hp <= 0) {
+                        gameOver();
+                    }
+                }
+            });
+
+            // Collectible Pickup Test
+            collectibles.forEach((hit, index) => {
+                if (player.x < hit.x + hit.width &&
+                    player.x + player.width > hit.x &&
+                    player.y < hit.y + hit.height &&
+                    player.y + player.height > hit.y) {
+
+                    // Collect Hit
+                    collectibles.splice(index, 1);
+                    hitsCollectedLevel++;
+                    score += 150 * currentLevel;
+                    audio.playHitPickup();
+                    createParticles(hit.x + hit.width/2, hit.y + hit.height/2, '#00f0ff', 10);
+
+                    // Spawn a new hit somewhere
+                    spawnSingleHit();
+
+                    // Check Level Advancement
+                    if (hitsCollectedLevel >= HITS_PER_LEVEL) {
+                        nextLevel();
+                    }
+                }
+            });
+
+            // Update UI
+            document.getElementById('hp-bar').style.width = Math.max(0, player.hp) + '%';
+            document.getElementById('progress-bar').style.width = ((hitsCollectedLevel / HITS_PER_LEVEL) * 100) + '%';
+            document.getElementById('hits-display').innerText = hitsCollectedLevel + ' / ' + HITS_PER_LEVEL;
+            document.getElementById('score-display').innerText = score;
+        }
+
+        // --- Level & State Management ---
+        function nextLevel() {
+            if (currentLevel >= 99) {
+                victory();
+                return;
+            }
+
+            currentLevel++;
+            hitsCollectedLevel = 0;
+            audio.playLevelUp();
+            document.getElementById('level-display').innerText = currentLevel + ' / 99';
+
+            // Reset Player Position & Heal slightly
+            player.x = 100;
+            player.y = 300;
+            player.hp = Math.min(100, player.hp + 25);
+
+            spawnCollectibles();
+            spawnEnemies();
+        }
+
+        function gameOver() {
+            gameState = 'GAMEOVER';
+            showOverlay('GAME OVER', `Du wurdest auf Level ${currentLevel} erwuscht! Ende deiner Jagd nach den Hits.`, 'ERNEUT VERSUCHEN');
+        }
+
+        function victory() {
+            gameState = 'VICTORY';
+            showOverlay('VICTORY!', `UNGLAUBLICH! Du hast alle 99 Level gemeistert und alle CardSkope Hits gesammelt! Score: ${score}`, 'NOCHMAL SPIELEN');
+        }
+
+        function showOverlay(title, msg, btnText) {
+            document.getElementById('overlay-title').innerText = title;
+            document.getElementById('overlay-msg').innerText = msg;
+            document.getElementById('start-btn').innerText = btnText;
+            document.getElementById('overlay').classList.remove('hidden');
+        }
+
+        function startGame() {
+            audio.init();
+            gameState = 'PLAYING';
+            currentLevel = 1;
+            score = 0;
+            hitsCollectedLevel = 0;
+            player.hp = 100;
+            player.x = 100;
+            player.y = 300;
+
+            document.getElementById('level-display').innerText = '1 / 99';
+            document.getElementById('overlay').classList.add('hidden');
+
+            spawnCollectibles();
+            spawnEnemies();
+        }
+
+        // --- Main Game Loop ---
+        function loop() {
+            update();
+            drawBackground();
+            drawEntities();
+            drawPlayer(ctx, player);
+            requestAnimationFrame(loop);
+        }
+
+        // --- Controls Handlers ---
+        function jump() {
+            if (gameState !== 'PLAYING') return;
+            if (player.grounded || player.jumpCount < player.maxJumps) {
+                player.vy = player.jumpPower;
+                player.jumpCount++;
+                player.grounded = false;
+                audio.playJump();
+                createParticles(player.x + player.width/2, player.y + player.height, '#ffffff', 5);
+            }
+        }
+
+        window.addEventListener('keydown', e => {
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = true;
+            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = true;
+            if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W' || e.key === ' ') {
+                if (!keys.up) jump();
+                keys.up = true;
+            }
+        });
+
+        window.addEventListener('keyup', e => {
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = false;
+            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = false;
+            if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W' || e.key === ' ') keys.up = false;
+        });
+
+        // Touch Control Listeners
+        const btnLeft = document.getElementById('btn-left');
+        const btnRight = document.getElementById('btn-right');
+        const btnJump = document.getElementById('btn-jump');
+
+        btnLeft.addEventListener('touchstart', (e) => { e.preventDefault(); keys.left = true; });
+        btnLeft.addEventListener('touchend', (e) => { e.preventDefault(); keys.left = false; });
+        btnRight.addEventListener('touchstart', (e) => { e.preventDefault(); keys.right = true; });
+        btnRight.addEventListener('touchend', (e) => { e.preventDefault(); keys.right = false; });
+        btnJump.addEventListener('touchstart', (e) => { e.preventDefault(); jump(); });
+
+        // Switch Character Button
+        document.getElementById('switch-char-btn').addEventListener('click', () => {
+            playerChar = playerChar === 'FLORIAN' ? 'NICO' : 'FLORIAN';
+            document.getElementById('char-name').innerText = playerChar;
+        });
+
+        // Start Button
+        document.getElementById('start-btn').addEventListener('click', startGame);
+
+        // Start animation loop
+        requestAnimationFrame(loop);
+    </script>
 </body>
 </html>
+```
